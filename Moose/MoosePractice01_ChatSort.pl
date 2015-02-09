@@ -6,7 +6,10 @@ package Chat{
   my @Chater;
   coerce 'Chat::ID'
     => from 'Str'
-    => via { Chat::ID->new( content => $_) };
+    => via { 
+      my $self = shift;
+      my ($ID, $content) = m'[\S]+ (.+?) (.+)$';
+      return Chat::ID->new( ID => $ID, content => $content) };
   has 'id' => ( is => 'rw', isa => 'Chat::ID', coerce => 1);
   sub add {
     my ($self, $content) = @_;
@@ -17,16 +20,37 @@ package Chat{
 package Chat::ID{
   use Moose;
   use Moose::Util::TypeConstraints;
-  coerce 'Chat::ID::Content'
+  my $ID;
+  sub BUILD {
+    my ($self, $ref) = @_;
+    if(exists $ID->{$ref->{ID}}){
+      $ID->{$ref->{ID}}->content->addcontent( $ref->{content} );
+      $ID->{$ref->{ID}}->times( $self->times + 1);
+    }
+    else {
+      $ID->{$ref->{ID}} = $self;
+      push @{$ID->{Refs}}, $self;
+      $self->times( $self->times + 1);
+    }
+  }
+  has 'ID' => ( is => 'ro', isa => 'Str' );
+  has 'times' => ( is => 'rw', isa => 'Int' );
+  coerce 'Chat::ID::Content' 
     => from 'Str'
-    => via { Chat::ID::Content->new( content => $_) };
+    => via { Chat::ID::Content->new( content => $_ ) };
   has 'content' => ( is => 'rw', isa => 'Chat::ID::Content', coerce => 1);
+  sub sortID {
+    return @{$ID->{Refs}};
+  }
   1;
 }
 package Chat::ID::Content {
   use Moose;
   use Moose::Util::TypeConstraints;
   has 'content' => ( is => 'rw', isa => 'Str');
+  sub addcontent {
+  
+  }
   1;
 }
 use Data::Dumper;
@@ -34,7 +58,10 @@ my $agent = Chat->new;
 while(<DATA>){
   $agent->add($_);
 }
-print Dumper $agent;
+for(Chat::ID->sortID){
+  print Dumper $_;
+}
+# print Dumper $agent;
 __DATA__
 23:21 kenny 紅水要怎麼喝==？
 23:21 張富翔 6C 打一次26K
