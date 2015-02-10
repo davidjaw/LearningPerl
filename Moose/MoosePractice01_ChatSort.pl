@@ -36,16 +36,25 @@ package Chat::ID{
       push @{$ID->{Refs}}, $self;
       $self->shownTimes(1);
     }
-    $self->job($job) if $job ne '';
-    $self->gossip($content) if $content ne '' && $content !~ m'(歌)|(盜)|(傭)|(富)|(豪)|(壕)|(非)';
+    $self->addJob($job) if $job ne '';
+    $self->addGossip($content) if $content ne '' && $content !~ m'(歌)|(盜)|(傭)|(富)|(豪)|(壕)|(非)';
   }
   has 'ID' => ( is => 'ro', isa => 'Str' );
   has 'shownTimes' => ( is => 'rw', isa => 'Int' );
   has 'content' => ( is => 'rw', isa => 'Str');
-  has 'job' => ( is => 'rw', isa => 'Str', predicate => 'hasJob');
-  has 'gossip' => ( is => 'rw', isa => 'Str', predicate => 'hasGossip');
-  sub sortID {
-    return @{$ID->{Refs}};
+  has 'job' => ( is => 'rw', isa => 'ArrayRef', predicate => 'hasJob');
+  has 'gossip' => ( is => 'rw', isa => 'ArrayRef', predicate => 'hasGossip');
+  sub sortID { return @{$ID->{Refs}}; }
+  sub clear { $ID = ''; }
+  sub addJob{
+    my ($self, $add) = @_;
+    push @{$self->job}, $add if $self->hasJob;
+    $self->job( [$add] ) unless $self->hasJob;
+  }
+  sub addGossip{
+    my ($self, $add) = @_;
+    push @{$self->gossip}, $add if $self->hasGossip;
+    $self->gossip( [$add] ) unless $self->hasGossip;
   }
   1;
 }
@@ -53,34 +62,32 @@ package Chat::ID{
 use v5.18.2;
 my $agent = Chat->new;
 
-while(<DATA>){
-  $agent->add($_);
+# for my $fileName( glob 'list*.txt' ){
+  # open my $FH, $_;
+  # while(<$FH>){
+    # chomp;
+    # $agent->add($_);
+  # }
+  # close($FH)
+# }
+# Chat::ID->clear;
+open my $FH, 'today.txt';
+while(<$FH>){ $agent->add($_) if /[\S+] .+ .+/; }
+close($FH);
+open my $jobHandle, '>Job';
+open my $gossipHandle, '>Gossips';
+makeList($jobHandle, 1);
+makeList($gossipHandle, 2);
+sub makeList{
+  my ($FH, $method) = @_;
+  for my $self(Chat::ID->sortID){
+    print $FH '---ID: ', $self->ID;
+    say $FH "\tShwontimes: ", $self->shownTimes;
+    if($self->hasJob && $method){
+      say $FH " └ $_" for(@{$self->job});
+    }
+    if($self->hasGossip && !$method){
+      say $FH " └ $_" for(@{$self->gossip});
+    }
+  }
 }
-for my $self(Chat::ID->sortID){
-  say 'ID: ', $self->ID;
-  say 'Job: ', $self->job if $self->hasJob;
-  say 'Gossip: ', $self->gossip if $self->hasGossip;
-  say 'Shwontimes: ', $self->shownTimes;
-  say "";
-}
-__DATA__
-23:21 kenny 紅水要怎麼喝==？[[asdf
-23:21 張富翔 6C 打一次26K
-23:21 張富翔 去倉庫喝
-23:21 Sih_Yuan ……
-23:21 david 趙 好問題ww
-23:21 張富翔 全噴
-23:22 kenny 可是點倉庫只有硬幣欸
-23:22 Sih_Yuan 晚上有這麼難組野團嗎==
-23:22 Jacky （つばさ） e開？
-23:22 kenny 沒看到紅水
-23:22 david 趙 那就是你沒有水
-23:22 張富翔 你是當天送的??
-23:22 david 趙 MENU 下面那牌有個購物車[[歌姬
-23:22 張富翔 還是用石頭買的
-23:22 kenny 送的
-23:22 E 我開？
-23:22 kenny 那有時間限制？
-23:22 Jacky （つばさ） 嗯
-23:22 張富翔 送的只有當天
-23:22 david 趙 送的過11點就消失了
