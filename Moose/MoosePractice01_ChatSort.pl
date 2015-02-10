@@ -1,5 +1,4 @@
 #!/use/bin/perl
-use Data::Dumper;
 package Chat{
   use Moose;
   use Moose::Util::TypeConstraints;
@@ -21,11 +20,11 @@ package Chat::ID{
   use Moose;
   use Moose::Util::TypeConstraints;
   my $ID;
+  $ID->{maxLength} = 0;
   sub BUILD {
     my ($self, $ref) = @_;
-    my $content = '';
+    my ($content, $job)= ('', '');
     $content = $1 if $ref->{content} =~/\[\[(.+)/;
-    my $job = '';
     $job = $content if m'(歌)|(盜)|(傭)|(富)|(豪)|(壕)|(非)';
     if(exists $ID->{$ref->{ID}}){
       $self = $ID->{$ref->{ID}};
@@ -36,10 +35,11 @@ package Chat::ID{
       push @{$ID->{Refs}}, $self;
       $self->shownTimes(1);
     }
+    $ID->{maxLength} = getLength($ref->{ID}) if getLength($ref->{ID}) > $ID->{maxLength};
     $self->addJob($job) if $job ne '';
     $self->addGossip($content) if $content ne '' && $content !~ m'(歌)|(盜)|(傭)|(富)|(豪)|(壕)|(非)';
   }
-  has 'ID' => ( is => 'ro', isa => 'Str' );
+  has 'ID' => ( is => 'rw', isa => 'Str' );
   has 'shownTimes' => ( is => 'rw', isa => 'Int' );
   has 'content' => ( is => 'rw', isa => 'Str');
   has 'job' => ( is => 'rw', isa => 'ArrayRef', predicate => 'hasJob');
@@ -55,6 +55,26 @@ package Chat::ID{
     my ($self, $add) = @_;
     push @{$self->gossip}, $add if $self->hasGossip;
     $self->gossip( [$add] ) unless $self->hasGossip;
+  }
+  sub getLength {
+    my $string = shift;
+    my $spaceNum = 0;
+    for( split '', $string ){
+      if( length $_ == 3 ){ $spaceNum += 2; }
+      elsif( length $_ == 1 ){ $spaceNum++; }
+    }
+    return $spaceNum;
+  }
+  sub ganerateLength {
+    for my $self (@{$ID->{Refs}}){
+      my $selfLength = getLength($self->ID);
+      if( $selfLength < $ID->{maxLength} ){
+        for(0..$ID->{maxLength} - $selfLength){
+          my $ID = $self->ID . " ";
+          $self->ID( $ID );
+        }
+      }
+    }
   }
   1;
 }
@@ -73,6 +93,7 @@ my $agent = Chat->new;
 # Chat::ID->clear;
 open my $FH, 'today.txt';
 while(<$FH>){ $agent->add($_) if /[\S+] .+ .+/; }
+Chat::ID->ganerateLength;
 close($FH);
 open my $jobHandle, '>Job';
 open my $gossipHandle, '>Gossips';
