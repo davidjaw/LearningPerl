@@ -77,12 +77,13 @@ close($FH);
 open my $jobHandle, '>Job';
 open my $gossipHandle, '>Gossips';
 makeList($jobHandle, 1);
-makeList($gossipHandle, 2);
+makeList($gossipHandle, 0);
 sub makeList{
   my ($FH, $method) = @_;
-  for my $self(Chat::ID->sortID){
-    print $FH '---ID: ', $self->ID;
-    say $FH "\tShwontimes: ", $self->shownTimes;
+  for my $self(sort { $a->shownTimes <=> $b->shownTimes } Chat::ID->sortID){
+    print $FH '---ID: ', $self->ID if $method || (!$method && $self->hasGossip);
+    say $FH '' if (!$method && $self->hasGossip);
+    say $FH "\tShwontimes: ", $self->shownTimes if $method;
     if($self->hasJob && $method){
       say $FH " └ $_" for(@{$self->job});
     }
