@@ -5,7 +5,7 @@ package Chat{
   my @Chater;
   coerce 'Chat::ID'
     => from 'Str'
-    => via { 
+    => via {
       my $self = shift;
       my ($ID, $content) = m'[\S]+ (.+?) (.*)$';
       return Chat::ID->new( ID => $ID, content => $content) };
@@ -35,6 +35,7 @@ package Chat::ID{
       push @{$ID->{Refs}}, $self;
       $self->shownTimes(1);
     }
+    $ID->{totalTalk}++;
     $ID->{maxLength} = getLength($ref->{ID}) if getLength($ref->{ID}) > $ID->{maxLength};
     $self->addJob($job) if $job ne '';
     $self->addGossip($content) if $content ne '' && $content !~ m'(歌)|(盜)|(傭)|(富)|(豪)|(壕)|(非)';
@@ -45,6 +46,7 @@ package Chat::ID{
   has 'job' => ( is => 'rw', isa => 'ArrayRef', predicate => 'hasJob');
   has 'gossip' => ( is => 'rw', isa => 'ArrayRef', predicate => 'hasGossip');
   sub sortID { return @{$ID->{Refs}}; }
+  sub totalTalk { return $ID->{totalTalk}; }
   sub clear { $ID = ''; }
   sub addJob{
     my ($self, $add) = @_;
@@ -92,7 +94,7 @@ my $agent = Chat->new;
 # }
 # Chat::ID->clear;
 open my $FH, 'today.txt';
-while(<$FH>){ $agent->add($_) if /[\S+] .+ .+/; }
+while(<$FH>){ $agent->add($_) if /[\S]+ .+ .+/; }
 Chat::ID->ganerateLength;
 close($FH);
 open my $jobHandle, '>Job';
@@ -104,7 +106,7 @@ sub makeList{
   for my $self(sort { $a->shownTimes <=> $b->shownTimes } Chat::ID->sortID){
     print $FH '---ID: ', $self->ID if $method || (!$method && $self->hasGossip);
     say $FH '' if (!$method && $self->hasGossip);
-    say $FH "\tShwontimes: ", $self->shownTimes if $method;
+    say $FH "\tTalks: ", $self->shownTimes if $method;
     if($self->hasJob && $method){
       say $FH " └ $_" for(@{$self->job});
     }
@@ -112,4 +114,5 @@ sub makeList{
       say $FH " └ $_" for(@{$self->gossip});
     }
   }
+  say $FH 'Total: ', Chat::ID->totalTalk if $method;
 }
